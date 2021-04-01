@@ -10,7 +10,7 @@ from sklearn.metrics import classification_report
 import nltk
 nltk.download('punkt')
 import joblib
-import gensim
+
 from nltk.tokenize import word_tokenize
 import warnings
 warnings.filterwarnings('ignore')
@@ -43,6 +43,7 @@ def infer_sentiment(review):
     scores=loaded_model.predict(df_model).tolist()
     scores_reviews=["positive review" if x>1 else "negative review" if x<0.75 else "neutral review" for x in scores]
     print(scores_reviews)
+    return scores_reviews
 
 def infer_sustainabilty(review):
     loaded_model = joblib.load('./output/sus_best_mnb_countvect.pkl')
@@ -56,3 +57,4 @@ def infer_sustainabilty(review):
     scores=loaded_model.predict(df_model).tolist()
     scores_reviews=["mentions sustainability" if x>0.5 else "doesn't mention sustainability" for x in scores]
     print(scores_reviews)
+    return scores_reviews

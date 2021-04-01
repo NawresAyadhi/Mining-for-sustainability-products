@@ -10,7 +10,7 @@ from sklearn.metrics import classification_report
 import nltk
 nltk.download('punkt')
 import joblib
-import gensim
+#import gensim
 from nltk.tokenize import word_tokenize
 import warnings
 warnings.filterwarnings('ignore')
@@ -25,7 +25,7 @@ from data_preprocessing.utils import ColumnExtractor
 from pprint import pprint
 from time import time
 
-TASK="sentiment_analysis"
+TASK=""
 
 def grid_vect(clf, parameters_clf, X_train, X_test, parameters_text=None, vect=None):
     
