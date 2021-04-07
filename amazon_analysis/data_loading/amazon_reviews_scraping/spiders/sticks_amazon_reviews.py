@@ -31,7 +31,7 @@ class MyScraper(scrapy.Spider):
 
         # Combining the results
         for review in star_rating:
-            yield{'sentiment': ''.join(review.xpath('.//text()').extract()),
+            yield{'stars': ''.join(review.xpath('.//text()').extract()),
                  'review': ''.join(comments[count].xpath(".//text()").extract()),
                  #'title': ''.join(comment_title[count].xpath(".//text()").extract())
                  }

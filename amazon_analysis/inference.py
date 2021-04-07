@@ -10,19 +10,18 @@ from sklearn.metrics import classification_report
 import nltk
 nltk.download('punkt')
 import joblib
-
 from nltk.tokenize import word_tokenize
 import warnings
 warnings.filterwarnings('ignore')
 np.random.seed(37)
-from data_preprocessing.text_cleaning import annotate_positive_negative, CleanText
-from data_preprocessing.data_generation import TextCounts
+from amazon_analysis.data_preprocessing.text_cleaning import CleanText
+from amazon_analysis.data_preprocessing.data_generation import TextCounts
 #from data_training.grid_search import grid_vect
-from data_training.models import mnb
+from amazon_analysis.data_training.models import mnb
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline, FeatureUnion
-from data_preprocessing.utils import ColumnExtractor
+from amazon_analysis.data_preprocessing.utils import ColumnExtractor
 from pprint import pprint
 from time import time
 
@@ -31,22 +30,9 @@ from time import time
 
 
 
-def infer_sentiment(review):
-    loaded_model = joblib.load('./output/best_mnb_countvect.pkl')
-    tc = TextCounts()
-    ct = CleanText()
-    new_review = pd.Series(review)
-    df_counts = tc.transform(new_review)
-    df_clean = ct.transform(new_review)
-    df_model = df_counts
-    df_model['clean_text'] = df_clean
-    scores=loaded_model.predict(df_model).tolist()
-    scores_reviews=["positive review" if x>1 else "negative review" if x<0.75 else "neutral review" for x in scores]
-    print(scores_reviews)
-    return scores_reviews
 
 def infer_sustainabilty(review):
-    loaded_model = joblib.load('./output/sus_best_mnb_countvect.pkl')
+    loaded_model = joblib.load('output/sus_best_mnb_countvect.pkl')
     tc = TextCounts()
     ct = CleanText()
     new_review = pd.Series(review)

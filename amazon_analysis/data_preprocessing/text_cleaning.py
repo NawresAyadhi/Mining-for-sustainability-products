@@ -54,13 +54,11 @@ class CleanText(BaseEstimator, TransformerMixin):
         return clean_X
 
 
-def annotate_positive_negative(df):
-    return df['sentiment'].apply(lambda x: 0 if int(float(x[0:3])) < 3 else 2 if int(float(x[0:3])) > 3 else 1)
 
 
-_vocab=["Died after", "doesn’t work", "life cycle","cycle life",
+_vocab=["Died after", "doesn’t work", "after", "life","cycle",
         "useless", "lifespan", "life cycle", "died", "longer", "battery", "use", "reuse", "energy","burn",
-        "cutting cord", "cable bill", "cutting cable", "cord bill", "environment",
+        "cutting cord", "cable bill", "cutting cable", "cord bill", "last", "environment",
         "unusable", "crashed", "longer life", "change battery", "expensive",
         "cheaper", "only lasted", "burn out", "died less than", "waste",
         "replace battery ever", "change battery every", "last long", "come back life", 
@@ -74,21 +72,20 @@ _vocab=["Died after", "doesn’t work", "life cycle","cycle life",
         "environmental impact", "eco-friendly", "single-use", "use once", "garbage", "eco",
         "landfill", "materials use", "use plastic", "easy set up", "tossed garbage", "garbage disposal", 
         "keep dying", "low price", "durability", "after weeks", "after month","after months", "after months",
-        "broke after", "cable bill", "Reduce energy consumption" , "Packaging made wood fiber-based materials", "fiber","plastic",
-        "fragile","tough","solid","freezing","freezes","connectivity"]
+        "broke after", "cable bill", "week", "Reduce energy consumption" , "Packaging made wood fiber-based materials", "fiber"]
 
-#vocab_tmp=[ y for y in (x.split(' ') for x in _vocab) ]  
-#vocab=[val.lower() for sublist in vocab_tmp for val in sublist]
+vocab_tmp=[ y for y in (x.split(' ') for x in _vocab) ]  
+vocab=[val.lower() for sublist in vocab_tmp for val in sublist]
 def subset(x):
     x=x.lower()
     lst=x.split(' ')
     set1 = set(lst) 
-    #for e in vocab:
-    set2 = set(_vocab) 
-    if set1.intersection(set2): 
-        return True 
-    else: 
-        return False
+    for e in vocab:
+        set2 = set(e) 
+        if set1.intersection(set2): 
+            return True 
+        else: 
+            return False
 def annotate_sustainable_not(df):
     return df['review'].apply(lambda x: 1 if subset(x) else 0)
 

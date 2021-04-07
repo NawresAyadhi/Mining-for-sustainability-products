@@ -10,24 +10,22 @@ from sklearn.metrics import classification_report
 import nltk
 nltk.download('punkt')
 import joblib
-#import gensim
 from nltk.tokenize import word_tokenize
 import warnings
 warnings.filterwarnings('ignore')
 np.random.seed(37)
-from data_preprocessing.text_cleaning import annotate_positive_negative, CleanText, annotate_sustainable_not
-from data_preprocessing.data_generation import TextCounts
+from amazon_analysis.data_preprocessing.text_cleaning import CleanText, annotate_sustainable_not
+from amazon_analysis.data_preprocessing.data_generation import TextCounts
 #from data_training.grid_search import grid_vect
-from data_training.models import mnb
+from amazon_analysis.data_training.models import mnb
 from sklearn.model_selection import GridSearchCV
 from sklearn.pipeline import Pipeline, FeatureUnion
-from data_preprocessing.utils import ColumnExtractor
+from amazon_analysis.data_preprocessing.utils import ColumnExtractor
 from pprint import pprint
 from time import time
 
-TASK=""
 
-def grid_vect(clf, parameters_clf, X_train, X_test, parameters_text=None, vect=None):
+def grid_vect(clf, parameters_clf, X_train, X_test, parameters_text=None, vect=None,  y_train=None, y_test=None):
     
     textcountscols = ['count_capital_words','count_emojis','count_excl_quest_marks','count_hashtags'
                       ,'count_mentions','count_urls','count_words']
@@ -69,35 +67,46 @@ def grid_vect(clf, parameters_clf, X_train, X_test, parameters_text=None, vect=N
                         
     return grid_search
 
-df=pd.read_csv('./data/reviews.csv')
+def read_data(path):
+    df=pd.read_csv(path)
+    return df
 
-if TASK=="sentiment_analysis":
-    df_sentiment=annotate_positive_negative(df)
-else:
+
+def encode_target(df):
     df_sentiment=annotate_sustainable_not(df)
+    return df_sentiment
 
-tc = TextCounts()
-df_eda = tc.fit_transform(df.review)
-df_eda['sentiment'] = df_sentiment
+def generate_new_columns(df, df_sentiment):
+    tc = TextCounts()
+    df_eda = tc.fit_transform(df.review)
+    df_eda['sustainability'] = df_sentiment
+    return df_eda
 
-ct = CleanText()
-sr_clean = ct.fit_transform(df.review)
+def clean_text(df):
+    ct = CleanText()
+    sr_clean = ct.fit_transform(df.review)
+    empty_clean = sr_clean == ''
+    print('{} records have no words left after text cleaning'.format(sr_clean[empty_clean].count()))
+    sr_clean.loc[empty_clean] = '[no_text]'
+    cv = CountVectorizer()
+    bow = cv.fit_transform(sr_clean)
+    word_freq = dict(zip(cv.get_feature_names(), np.asarray(bow.sum(axis=0)).ravel()))
+    word_counter = collections.Counter(word_freq)
+    word_counter_df = pd.DataFrame(word_counter.most_common(20), columns = ['word', 'freq'])
+    return sr_clean
 
-empty_clean = sr_clean == ''
-print('{} records have no words left after text cleaning'.format(sr_clean[empty_clean].count()))
-sr_clean.loc[empty_clean] = '[no_text]'
+    
 
-cv = CountVectorizer()
-bow = cv.fit_transform(sr_clean)
-word_freq = dict(zip(cv.get_feature_names(), np.asarray(bow.sum(axis=0)).ravel()))
-word_counter = collections.Counter(word_freq)
-word_counter_df = pd.DataFrame(word_counter.most_common(20), columns = ['word', 'freq'])
+def merge_all_in_single_dataframe(df_eda, sr_clean):
+    df_model = df_eda
+    df_model['clean_text'] = sr_clean
+    df_model.columns.tolist()
+    return df_model
 
-df_model = df_eda
-df_model['clean_text'] = sr_clean
-df_model.columns.tolist()
+def split_data(df_model, test_size=0.1):
+    X_train, X_test, y_train, y_test = train_test_split(df_model.drop('sustainability', axis=1), df_model.sustainability, test_size=test_size, random_state=37)
+    return X_train, X_test, y_train, y_test
 
-X_train, X_test, y_train, y_test = train_test_split(df_model.drop('sentiment', axis=1), df_model.sentiment, test_size=0.1, random_state=37)
 # Parameter grid settings for the vectorizers (Count and TFIDF)
 parameters_vect = {
     'features__pipe__vect__max_df': (0.25, 0.5, 0.75),
@@ -110,20 +119,16 @@ parameters_mnb = {
 }
 
 
-if TASK=="sentiment_analysis":
-
+def train_model_plus_grid_search(X_train, X_test, y_train, y_test):
+    import os 
+    current_directory = os.getcwd()
+    print(current_directory)
+    if not os.path.exists(current_directory+"/output"):
+        os.makedirs(current_directory+"/output")
     countvect = CountVectorizer()
-    best_mnb_countvect = grid_vect(mnb, parameters_mnb, X_train, X_test, parameters_text=parameters_vect, vect=countvect)
-    joblib.dump(best_mnb_countvect, './output/best_mnb_countvect.pkl')
+    best_mnb_countvect = grid_vect(mnb, parameters_mnb, X_train, X_test, parameters_text=parameters_vect, vect=countvect, y_train=y_train, y_test=y_test)
+    joblib.dump(best_mnb_countvect, 'output/sus_best_mnb_countvect.pkl')
 
     tfidfvect = TfidfVectorizer()
-    best_mnb_tfidf = grid_vect(mnb, parameters_mnb, X_train, X_test, parameters_text=parameters_vect, vect=tfidfvect)
-    joblib.dump(best_mnb_tfidf, './output/best_mnb_tfidf.pkl')
-else: 
-    countvect = CountVectorizer()
-    best_mnb_countvect = grid_vect(mnb, parameters_mnb, X_train, X_test, parameters_text=parameters_vect, vect=countvect)
-    joblib.dump(best_mnb_countvect, './output/sus_best_mnb_countvect.pkl')
-
-    tfidfvect = TfidfVectorizer()
-    best_mnb_tfidf = grid_vect(mnb, parameters_mnb, X_train, X_test, parameters_text=parameters_vect, vect=tfidfvect)
-    joblib.dump(best_mnb_tfidf, './output/sus_best_mnb_tfidf.pkl')
+    best_mnb_tfidf = grid_vect(mnb, parameters_mnb, X_train, X_test, parameters_text=parameters_vect, vect=tfidfvect, y_train=y_train, y_test=y_test)
+    joblib.dump(best_mnb_tfidf, 'output/sus_best_mnb_tfidf.pkl')
